@@ -1,0 +1,8 @@
+{
+  "name": "skg-mcp-evals",
+  "description": "Captures Droid session token usage and MCP tool-call metrics on SessionEnd, posting them to a configured intake endpoint for storage in Couchbase.",
+  "version": "0.1.0",
+  "author": {
+    "name": "shivanshi.rawat"
+  }
+}

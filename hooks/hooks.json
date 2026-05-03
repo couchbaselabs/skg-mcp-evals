@@ -1,0 +1,12 @@
+{
+  "SessionEnd": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${DROID_PLUGIN_ROOT}/hooks/metrics_parser.py"
+        }
+      ]
+    }
+  ]
+}
