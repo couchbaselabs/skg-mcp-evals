@@ -1,69 +1,42 @@
-# skg-mcp-evals
+# skg-mcp-evals — Droid plugin marketplace
 
-Droid plugin that captures session token usage and MCP tool-call metrics on `SessionEnd`
-and POSTs them to a configured MCP server intake endpoint, which upserts the data
-into a Couchbase collection (`AI-Eval.telemetry.Client_side_evals`).
+A single-plugin Droid marketplace for capturing per-session token usage and MCP tool-call metrics, posted to an MCP server's `/session-eval` endpoint and stored in Couchbase (`AI-Eval.telemetry.Client_side_evals`).
 
-## What it captures
+## Plugins
 
-One doc per Droid session, keyed by `session_id`. Resumes upsert the same doc — no duplicates.
+- **`evals`** (`plugins/evals/`) — `SessionEnd` hook script that reads the session's `settings.json` + transcript, computes Factory billable tokens via a per-model multiplier table, and POSTs the eval doc to a configured MCP server. See [`plugins/evals/README.md`](plugins/evals/README.md) for install details and the multiplier formula.
 
-- **Identity:** `user`, `domain`, `model`, `model_tier`, `permission_mode`
-- **Tokens:** `input`, `cache_creation`, `cache_read`, `output`, `thinking` (raw + display)
-- **Aggregate:** `factory_billable_tokens` (computed via published model multipliers, matches `/cost` "Factory approx")
-- **MCP tool calls:** count per tool, total, error count
+## Install
 
-Phantom sessions (`message_count == 0`) are skipped — Droid spawns short-lived internal sessions that we don't record.
+In Droid (CLI or desktop), run `/plugin` and:
 
-## Install (recommended — via Droid's plugin UI)
-
-In Droid, type `/plugin` to open the plugin browser, then:
-
-1. **Marketplaces** tab → paste `<your-org>/skg-mcp-evals` → click **ADD**
-2. **Browse** tab → install `evals`
+1. **Marketplaces** tab → paste `https://github.com/couchbaselabs/skg-mcp-evals` → click **ADD**
+2. **Browse** tab → find `evals` → install
 3. `/hooks` → approve the `SessionEnd` hook (one-time)
 
-That's it. No env vars, no shell config — the parser auto-resolves the metrics URL from your existing Droid MCP config (`~/.factory/mcp.json`), swapping `/mcp` for `/session-eval` on whichever MCP server you've already wired up.
+The plugin auto-resolves the metrics URL from `~/.factory/mcp.json` (swaps `/mcp` for `/session-eval` on the configured MCP server). Set `MCP_METRICS_URL` in your shell to override.
 
-Auto-update is on by default, so when fixes get pushed to GitHub your local copy stays current.
+## What gets captured
 
-## Optional — override the metrics URL
+One doc per Droid session, keyed by `session_id`. Resumes upsert the same doc — no duplicates. Phantom sessions (`message_count == 0`) are skipped.
 
-If you have multiple MCP servers configured and want to force the metrics POSTs to a specific one, set this in your shell rc:
+Fields per doc:
 
-```bash
-export MCP_METRICS_URL="http://your-mcp-host:8002/session-eval"
-```
-
-When set, this takes priority over the auto-derived URL.
-
-## Install (manual / local dev mode)
-
-For working on the plugin itself before pushing to GitHub:
-
-```bash
-ln -sfn /path/to/skg-mcp-evals ~/.factory/plugins/skg-mcp-evals
-chmod +x /path/to/skg-mcp-evals/hooks/metrics_parser.py
-```
-
-Then enable in `~/.factory/settings.json`:
-
-```json
-{ "enabledPlugins": { "skg-mcp-evals": true } }
-```
-
-Restart Droid sessions to load.
+- Identity — `user`, `domain` (= MCP scope), `model`, `model_tier`, `permission_mode`
+- Tokens (raw + display) — `input`, `cache_creation`, `cache_read`, `output`, `thinking`
+- Aggregate — `factory_billable_tokens` (matches `/cost` "Factory approx" within rounding)
+- MCP tool calls — total, errors, unique names, per-tool counts
 
 ## Verify
 
-After ending a Droid session with at least one user message, check Couchbase:
+After ending a real Droid session with at least one tool call:
 
 ```sql
-SELECT META().id, factory_billable_tokens_display, mcp_tool_calls.total
+SELECT META().id, factory_billable_tokens_display, mcp_tool_calls.total, domain
 FROM `AI-Eval`.`telemetry`.`Client_side_evals`
 ORDER BY message_count DESC LIMIT 5;
 ```
 
 ## Spec
 
-See `docs/superpowers/specs/2026-05-03-client-side-evals-design.md` in the `mcp-skg` repo.
+Design and rationale live in the `mcp-skg` repo at `docs/superpowers/specs/2026-05-03-client-side-evals-design.md`.
