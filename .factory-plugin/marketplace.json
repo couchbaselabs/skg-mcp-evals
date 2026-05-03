@@ -1,0 +1,16 @@
+{
+  "name": "skg-mcp-evals",
+  "description": "Single-plugin Droid marketplace that captures per-session token usage and MCP tool-call metrics, posting them to a Couchbase backend.",
+  "owner": {
+    "name": "Couchbase Labs",
+    "email": "shivanshi.rawat@couchbase.com"
+  },
+  "plugins": [
+    {
+      "name": "evals",
+      "description": "SessionEnd hook that POSTs Droid session token usage and MCP tool-call counts to a configured /session-eval endpoint. Stores one doc per session in AI-Eval.telemetry.Client_side_evals.",
+      "source": "./plugins/evals",
+      "category": "telemetry"
+    }
+  ]
+}
