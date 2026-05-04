@@ -96,7 +96,11 @@ def parse_mcp_tools(transcript_path: str) -> dict:
                     btype = block.get("type")
                     if btype == "tool_use":
                         name = block.get("name", "")
-                        if name.startswith("mcp__"):
+                        # Droid names MCP tools "<server>___<tool>" (triple
+                        # underscore) in current versions; older docs/format
+                        # uses "mcp__<server>__<tool>". Built-ins (Read,
+                        # Glob, Edit, Bash, TodoWrite, ...) have neither.
+                        if "___" in name or name.startswith("mcp__"):
                             counts[name] += 1
                             use_id_to_name[block.get("id", "")] = name
                     elif btype == "tool_result":
